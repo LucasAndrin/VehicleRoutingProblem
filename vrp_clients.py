@@ -3,7 +3,7 @@ import networkx as nx
 import random as rd
 import numpy as np
 
-class VRPGeneticSolver:
+class VRPClientSolver:
     def __init__(self, clients: int, vehicles: int, capacity: int, gen_size: int, pop_size: int, mut_rate: float):
         self.clients = clients
         self.vehicles = vehicles
@@ -11,10 +11,6 @@ class VRPGeneticSolver:
         self.gen_size = gen_size
         self.pop_size = pop_size
         self.mut_rate = mut_rate
-
-        # Set random seeds for reproducibility
-        np.random.seed(42)
-        rd.seed(42)
 
         # Generate graph and demands
         self.graph = self._gen_graph()
@@ -209,7 +205,11 @@ class VRPGeneticSolver:
         print(f"Total Cost: {best_cost}")
 
 if __name__ == "__main__":
-    solver = VRPGeneticSolver(
+    # Set random seeds for reproducibility
+    np.random.seed(42)
+    rd.seed(42)
+    
+    solver = VRPClientSolver(
         clients=10,
         vehicles=3,
         capacity=15,
