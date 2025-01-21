@@ -3,7 +3,7 @@ import networkx as nx
 import random as rd
 import numpy as np
 
-class VRPClientSolver:
+class VRPGeneticSolver:
     def __init__(self, clients: int, vehicles: int, capacity: int, gen_size: int, pop_size: int, mut_rate: float):
         self.clients = clients
         self.vehicles = vehicles
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     np.random.seed(42)
     rd.seed(42)
     
-    solver = VRPClientSolver(
+    solver = VRPGeneticSolver(
         clients=10,
         vehicles=3,
         capacity=15,
