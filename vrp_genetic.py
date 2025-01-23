@@ -169,10 +169,20 @@ class VRPGeneticSolver:
         # Generate initial population
         pop = self._gen_population()
 
+        best_cost = float('inf')
+        best_solution = []
         for gen in range(self.gen_size):
             # Evaluate population
             fit = [(self.evaluate(sol), sol) for sol in pop]
             fit.sort(key=lambda x: x[0])
+            
+            # Best solution of the generation
+            top_cost, top_sol = fit[0]
+            
+            if top_cost < best_cost:
+                best_cost = top_cost
+                best_solution = top_sol
+                print(f'Generation {gen + 1}: Best Cost = {best_cost}, Best Solution = {best_solution}')
 
             # Select the best solutions
             pop = [sol for _, sol in fit[:self.pop_size // 2]]
@@ -188,13 +198,6 @@ class VRPGeneticSolver:
             # Mutation
             for sol in pop:
                 self.mutate(sol)
-
-            # Best solution of the generation
-            best_cost, best_solution = fit[0]
-            
-            if best_cost < 70:
-                print(f'Generation {gen + 1}: Best Cost = {best_cost}, Best Solution = {best_solution}')
-                
 
         # Final result
         fit.sort(key=lambda x: x[0])
@@ -213,8 +216,8 @@ if __name__ == "__main__":
         clients=10,
         vehicles=3,
         capacity=15,
-        gen_size=100,
-        pop_size=80,
+        gen_size=200,
+        pop_size=100,
         mut_rate=0.2
     )
     
