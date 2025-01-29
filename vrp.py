@@ -3,8 +3,8 @@ import networkx as nx
 import random as rd
 import numpy as np
 
-class Client[V]:
-    def __init__(self, address: V, demand: int):
+class Client:
+    def __init__(self, address: int, demand: int):
         self.address = address
         self.demand = demand
 
@@ -14,10 +14,9 @@ class Vehicle:
         self.capacity = capacity
 
 class VRPSolver:
-    def __init__(self, graph: nx.DiGraph, clients: list[int], demands: dict[int, int], vehicles: list[Vehicle], gen_size: int, pop_size: int, mut_rate: float):
+    def __init__(self, graph: nx.DiGraph, clients: list[Client], vehicles: list[Vehicle], gen_size: int, pop_size: int, mut_rate: float):
         self.graph = graph
         self.clients = clients
-        self.demands = demands
         self.vehicles = vehicles
         self.gen_size = gen_size
         self.pop_size = pop_size
@@ -30,19 +29,18 @@ class VRPSolver:
         Returns:
             list[list[int]]: Generated solution
         """
-        nodes = self.clients.copy()
+        nodes = self.clients[1:]  # Exclui o depósito
         rd.shuffle(nodes)
 
         paths = [[] for _ in self.vehicles]
         capacities = [0] * len(self.vehicles)
 
-        for node in nodes:
-            # Find the vehicle with the lowest load that can accommodate the current demand
-            possible_vehicles = [i for i in range(len(self.vehicles)) if capacities[i] + self.demands[node] <= self.vehicles[i].capacity]
+        for client in nodes:
+            possible_vehicles = [i for i in range(len(self.vehicles)) if capacities[i] + client.demand <= self.vehicles[i].capacity]
             if possible_vehicles:
                 vehicle = min(possible_vehicles, key=lambda i: capacities[i])
-                paths[vehicle].append(node)
-                capacities[vehicle] += self.demands[node]
+                paths[vehicle].append(client.address)
+                capacities[vehicle] += client.demand
 
         return paths
 
@@ -66,17 +64,17 @@ class VRPSolver:
             float: Result of the evaluation
         """
         total_cost = 0
-        for i, path in enumerate(solution):
+        for path in solution:
             if not path:
                 continue
 
             cost = 0
-            prev_node = 0 # Start at the depot
+            prev_node = 0
 
             for node in path:
                 cost += self.graph[prev_node][node]['weight']
                 prev_node = node
-            cost += self.graph[prev_node][0]['weight'] # Return to depot
+            cost += self.graph[prev_node][0]['weight']
             total_cost += cost
         return total_cost
 
@@ -136,61 +134,71 @@ class VRPSolver:
         best_solution = []
 
         for gen in range(self.gen_size):
-            # Evaluate population
             fit = [(self.evaluate(sol), sol) for sol in pop]
             fit.sort(key=lambda x: x[0])
 
-            # Best solution of the generation
             top_cost, top_sol = fit[0]
             if top_cost < best_cost:
                 best_cost = top_cost
                 best_solution = top_sol
                 print(f'Generation {gen + 1}: Best Cost = {best_cost}')
 
-            # Select the best solutions
             pop = [sol for _, sol in fit[:self.pop_size // 2]]
-
-            # Crossover
             offspring = [self.crossover(rd.choice(pop), rd.choice(pop)) for _ in range(self.pop_size // 2)]
             pop.extend(offspring)
 
-            # Mutation
             for sol in pop:
                 self.mutate(sol)
 
         return best_cost, best_solution
 
+    def draw_graph(self, best_solution = None):
+        """
+        Draw graph using plt lib and
+
+        Args:
+            best_solution (list[list[int]]): Best Solution
+        """
+        pos = nx.spring_layout(self.graph, seed=123)
+        labels = {node: f"{node}" for node in self.graph.nodes}
+
+        plt.figure(figsize=(8, 6))
+        nx.draw(self.graph, pos, with_labels=True, labels=labels, node_color='lightblue', edge_color='gray', node_size=700, font_size=12, style='dashed')
+
+        edge_labels = {(u, v): f"{self.graph[u][v]['weight']}" for u, v in self.graph.edges()}
+        nx.draw_networkx_edge_labels(self.graph, pos, edge_labels=edge_labels, font_size=10)
+
+        nx.draw_networkx_nodes(self.graph, pos, nodelist=[0], node_color='red', node_size=900)
+
+        if best_solution != None:
+            colors = ['b', 'g', 'm', 'c', 'y']
+            for i, path in enumerate(best_solution):
+                edges = [(0, path[0])] + [(path[j], path[j + 1]) for j in range(len(path) - 1)] + [(path[-1], 0)]
+                nx.draw_networkx_edges(self.graph, pos, edgelist=edges, edge_color=colors[i % len(colors)], width=2.5)
+
+        plt.title("Best VRP Solution")
+        plt.show()
+
 if __name__ == "__main__":
     SEED = 123
-
-    # Data
     CLIENTS = 10
     VEHICLES = 3
     MAX_DEMAND = 10
-    MIN_CAPACITY = 8
     MAX_CAPACITY = 15
 
-
-    # Set random seeds for reproducibility
     rd.seed(SEED)
     np.random.seed(SEED)
 
-    # clients = [Client(address, rd.randint(1, MAX_DEMAND)) for address in range(1, CLIENTS)]
+    clients = [Client(0, 0)] + [Client(address, rd.randint(1, MAX_DEMAND)) for address in range(1, CLIENTS + 1)]
     vehicles = [Vehicle(fuel=100, capacity=MAX_CAPACITY) for _ in range(VEHICLES)]
-
-    clients = list(range(1, CLIENTS + 1))
-    demands = {client: np.random.randint(1, MAX_DEMAND) for client in clients}
-    demands[0] = 0  # The deposit has no demand
 
     graph = nx.complete_graph(CLIENTS + 1, nx.DiGraph)
     for u, v in graph.edges():
         graph[u][v]['weight'] = np.random.randint(1, 20)
 
-    solver = VRPSolver(graph, clients, vehicles,
-        gen_size=200,
-        pop_size=100,
-        mut_rate=0.2
-    )
+    solver = VRPSolver(graph, clients, vehicles, gen_size=200, pop_size=100, mut_rate=0.2)
     best_cost, best_solution = solver.solve()
     print(f'Best Cost: {best_cost}')
     print(f'Best Solution: {best_solution}')
+
+    solver.draw_graph(best_solution)
