@@ -22,7 +22,7 @@ class VRPSolver:
         self.pop_size = pop_size
         self.mut_rate = mut_rate
 
-    def _gen_solution(self):
+    def _gen_solution(self) -> list[list[int]]:
         """
         Generates a random solution of paths, ensuring the capacity is not exceeded.
 
@@ -44,7 +44,7 @@ class VRPSolver:
 
         return paths
 
-    def _gen_population(self):
+    def _gen_population(self) -> list[list[list[int]]]:
         """Generate a random population of solutions
 
         Returns:
@@ -52,7 +52,7 @@ class VRPSolver:
         """
         return [self._gen_solution() for _ in range(self.pop_size)]
 
-    def evaluate(self, solution):
+    def evaluate(self, solution) -> list[list[int]]:
         """
         Calculates the total cost of a solution
         and applies penalties for capacity violations
@@ -78,7 +78,7 @@ class VRPSolver:
             total_cost += cost
         return total_cost
 
-    def crossover(self, solution1, solution2):
+    def crossover(self, sol1, sol2) -> list[list[int]]:
         """
         Performs crossover between two parent solutions
         and returns it's result
@@ -92,11 +92,11 @@ class VRPSolver:
         """
         new_solution = []
         used = set()
-        for path in solution1:
+        for path in sol1:
             new_path = [node for node in path if node not in used]
             used.update(new_path)
             new_solution.append(new_path)
-        for path in solution2:
+        for path in sol2:
             for node in path:
                 if node not in used:
                     for new_path in new_solution:
@@ -106,9 +106,9 @@ class VRPSolver:
                             break
         return new_solution
 
-    def mutate(self, solution):
+    def mutate(self, solution) -> list[list[int]]:
         """
-        MUtates a solution by swapping nodes between paths.
+        Mutates a solution by swapping nodes between paths.
 
         Args:
             solution (list[list[int]]): Solution
@@ -130,6 +130,7 @@ class VRPSolver:
 
         # Generate initial population
         pop = self._gen_population()
+        best_gen = 0
         best_cost = float('inf')
         best_solution = []
 
@@ -139,9 +140,10 @@ class VRPSolver:
 
             top_cost, top_sol = fit[0]
             if top_cost < best_cost:
+                best_gen = gen + 1
                 best_cost = top_cost
                 best_solution = top_sol
-                print(f'Generation {gen + 1}: Best Cost = {best_cost}')
+                print(f'Generation {best_gen}: Best Cost = {best_cost}')
 
             pop = [sol for _, sol in fit[:self.pop_size // 2]]
             offspring = [self.crossover(rd.choice(pop), rd.choice(pop)) for _ in range(self.pop_size // 2)]
@@ -150,11 +152,11 @@ class VRPSolver:
             for sol in pop:
                 self.mutate(sol)
 
-        return best_cost, best_solution
+        return best_gen, best_cost, best_solution
 
-    def draw_graph(self, best_solution = None):
+    def draw_graph(self, sol = None):
         """
-        Draw graph using plt lib and
+        Draw graph using plt lib and highlight a solution
 
         Args:
             best_solution (list[list[int]]): Best Solution
@@ -170,9 +172,9 @@ class VRPSolver:
 
         nx.draw_networkx_nodes(self.graph, pos, nodelist=[0], node_color='red', node_size=900)
 
-        if best_solution != None:
+        if sol != None:
             colors = ['b', 'g', 'm', 'c', 'y']
-            for i, path in enumerate(best_solution):
+            for i, path in enumerate(sol):
                 edges = [(0, path[0])] + [(path[j], path[j + 1]) for j in range(len(path) - 1)] + [(path[-1], 0)]
                 nx.draw_networkx_edges(self.graph, pos, edgelist=edges, edge_color=colors[i % len(colors)], width=2.5)
 
@@ -180,25 +182,32 @@ class VRPSolver:
         plt.show()
 
 if __name__ == "__main__":
-    SEED = 123
-    CLIENTS = 10
+    SEED = 42
+    CLIENTS = 8
     VEHICLES = 3
     MAX_DEMAND = 10
     MAX_CAPACITY = 15
 
+    # Allow reproducibility
     rd.seed(SEED)
     np.random.seed(SEED)
 
-    clients = [Client(0, 0)] + [Client(address, rd.randint(1, MAX_DEMAND)) for address in range(1, CLIENTS + 1)]
-    vehicles = [Vehicle(fuel=100, capacity=MAX_CAPACITY) for _ in range(VEHICLES)]
+    sum = 0
+    for i in range(CLIENTS, 64, 16):
+        clients = [Client(0, 0)] + [Client(address, rd.randint(1, MAX_DEMAND)) for address in range(1, CLIENTS + 1)]
+        vehicles = [Vehicle(fuel=100, capacity=MAX_CAPACITY) for _ in range(VEHICLES)]
 
-    graph = nx.complete_graph(CLIENTS + 1, nx.DiGraph)
-    for u, v in graph.edges():
-        graph[u][v]['weight'] = np.random.randint(1, 20)
+        graph = nx.complete_graph(CLIENTS + 1, nx.DiGraph)
+        for u, v in graph.edges():
+            graph[u][v]['weight'] = rd.randint(1, 20)
 
-    solver = VRPSolver(graph, clients, vehicles, gen_size=200, pop_size=100, mut_rate=0.2)
-    best_cost, best_solution = solver.solve()
-    print(f'Best Cost: {best_cost}')
-    print(f'Best Solution: {best_solution}')
+        solver = VRPSolver(graph, clients, vehicles, gen_size=100, pop_size=100, mut_rate=0.2)
+        best_gen, best_cost, best_solution = solver.solve()
+        sum += best_gen
+        print(f'Best Gen: {best_gen}')
+        print(f'Best Cost: {best_cost}')
+        print(f'Best Solution: {best_solution}')
 
-    solver.draw_graph(best_solution)
+        solver.draw_graph(best_solution)
+
+    print(f'Average: {sum / (i / 16)}')
