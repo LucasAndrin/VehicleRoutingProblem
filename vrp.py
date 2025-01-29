@@ -3,17 +3,22 @@ import networkx as nx
 import random as rd
 import numpy as np
 
+class Client[V]:
+    def __init__(self, address: V, demand: int):
+        self.address = address
+        self.demand = demand
+
 class Vehicle:
     def __init__(self, fuel: int, capacity: int):
         self.fuel = fuel
         self.capacity = capacity
 
 class VRPSolver:
-    def __init__(self, graph: nx.DiGraph, clients: list[int], vehicles: list[Vehicle], demands: dict[int, int], gen_size: int, pop_size: int, mut_rate: float):
+    def __init__(self, graph: nx.DiGraph, clients: list[int], demands: dict[int, int], vehicles: list[Vehicle], gen_size: int, pop_size: int, mut_rate: float):
         self.graph = graph
         self.clients = clients
-        self.vehicles = vehicles
         self.demands = demands
+        self.vehicles = vehicles
         self.gen_size = gen_size
         self.pop_size = pop_size
         self.mut_rate = mut_rate
@@ -157,22 +162,35 @@ class VRPSolver:
 
 if __name__ == "__main__":
     SEED = 123
+
+    # Data
     CLIENTS = 10
+    VEHICLES = 3
+    MAX_DEMAND = 10
+    MIN_CAPACITY = 8
+    MAX_CAPACITY = 15
+
 
     # Set random seeds for reproducibility
     rd.seed(SEED)
     np.random.seed(SEED)
 
-    vehicles = [Vehicle(fuel=100, capacity=15) for _ in range(3)]
+    # clients = [Client(address, rd.randint(1, MAX_DEMAND)) for address in range(1, CLIENTS)]
+    vehicles = [Vehicle(fuel=100, capacity=MAX_CAPACITY) for _ in range(VEHICLES)]
+
     clients = list(range(1, CLIENTS + 1))
-    demands = {client: np.random.randint(1, 10) for client in clients}
+    demands = {client: np.random.randint(1, MAX_DEMAND) for client in clients}
     demands[0] = 0  # The deposit has no demand
 
     graph = nx.complete_graph(CLIENTS + 1, nx.DiGraph)
     for u, v in graph.edges():
         graph[u][v]['weight'] = np.random.randint(1, 20)
 
-    solver = VRPSolver(graph, clients, vehicles, demands, gen_size=200, pop_size=100, mut_rate=0.2)
+    solver = VRPSolver(graph, clients, vehicles,
+        gen_size=200,
+        pop_size=100,
+        mut_rate=0.2
+    )
     best_cost, best_solution = solver.solve()
     print(f'Best Cost: {best_cost}')
     print(f'Best Solution: {best_solution}')
