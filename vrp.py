@@ -29,7 +29,7 @@ class VRPSolver:
         Returns:
             list[list[int]]: Generated solution
         """
-        nodes = self.clients[1:]  # Exclui o depósito
+        nodes = self.clients[1:]  # Delete depot from node list
         rd.shuffle(nodes)
 
         paths = [[] for _ in self.vehicles]
